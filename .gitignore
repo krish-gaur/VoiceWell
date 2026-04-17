@@ -1,0 +1,13 @@
+# Backend
+backend/uploads/
+backend/reports/
+__pycache__/
+*.pyc
+.env
+
+# Frontend
+node_modules/
+.next/
+out/
+build/
+.DS_Store
