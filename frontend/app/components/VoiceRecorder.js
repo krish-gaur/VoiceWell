@@ -1,579 +1,705 @@
 "use client";
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from "react";
 
-/* ─── Keyframe injection ─── */
 const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=JetBrains+Mono:wght@300;400&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@300;400;500&display=swap');
 
-  @keyframes spin-ring   { to { transform: rotate(360deg); } }
-  @keyframes spin-ring2  { to { transform: rotate(-360deg); } }
-  @keyframes pulse-dot   { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
-  @keyframes float-up    { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
-  @keyframes status-in   { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
-  @keyframes bar-grow    { from{transform:scaleY(0)} to{transform:scaleY(1)} }
-  @keyframes shimmer     { 0%{background-position:200% center} 100%{background-position:-200% center} }
-  @keyframes result-in   { from{opacity:0;transform:translateY(20px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
-  @keyframes ping        { 0%{transform:scale(1);opacity:.8} 80%,100%{transform:scale(2.2);opacity:0} }
-  @keyframes scan-line   { 0%{top:0%} 100%{top:100%} }
-  @keyframes ticker      { from{transform:translateX(0)} to{transform:translateX(-50%)} }
-
-  .vr-root * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  .vr-root {
-    font-family: 'Syne', sans-serif;
-    background: #080b12;
+  .vw-root {
     min-height: 100vh;
+    background: #020608;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 2rem 1rem;
-  }
-
-  .vr-card {
-    width: 100%;
-    max-width: 420px;
-    background: #0d1117;
-    border: 1px solid rgba(0,200,160,.18);
-    border-radius: 28px;
+    font-family: 'DM Mono', monospace;
     overflow: hidden;
     position: relative;
-    box-shadow: 0 0 0 1px rgba(0,200,160,.06), 0 40px 80px rgba(0,0,0,.7);
   }
 
-  /* top stripe */
-  .vr-stripe {
-    height: 3px;
-    background: linear-gradient(90deg, transparent, #00c8a0 40%, #00e5ff 60%, transparent);
+  .vw-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
   }
 
-  /* header */
-  .vr-header {
-    padding: 1.5rem 1.75rem 1rem;
+  .vw-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,210,150,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,210,150,0.04) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  .vw-orb1 {
+    position: absolute;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,210,150,0.08) 0%, transparent 70%);
+    top: -200px; left: -200px;
+    animation: vwPulseOrb 6s ease-in-out infinite;
+  }
+
+  .vw-orb2 {
+    position: absolute;
+    width: 400px; height: 400px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,120,255,0.06) 0%, transparent 70%);
+    bottom: -100px; right: -100px;
+    animation: vwPulseOrb 8s ease-in-out infinite reverse;
+  }
+
+  @keyframes vwPulseOrb {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.15); opacity: 0.6; }
+  }
+
+  .vw-card {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 480px;
+    padding: 2.5rem 2rem;
+    margin: 2rem 1rem;
+    background: rgba(8, 16, 14, 0.85);
+    border: 1px solid rgba(0,210,150,0.18);
+    border-radius: 24px;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 0 60px rgba(0,210,150,0.06), inset 0 1px 0 rgba(0,210,150,0.1);
+  }
+
+  .vw-header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+
+  .vw-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 0.5rem;
+  }
+
+  .vw-logo-icon {
+    width: 36px; height: 36px;
+    position: relative;
+  }
+
+  .vw-logo-icon svg {
+    width: 100%; height: 100%;
+  }
+
+  .vw-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, #00d296 0%, #00a8ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0;
+  }
+
+  .vw-tagline {
+    font-size: 0.7rem;
+    color: rgba(0,210,150,0.5);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  .vw-divider {
+    width: 100%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0,210,150,0.3), transparent);
+    margin: 1.5rem 0;
+  }
+
+  /* Waveform canvas */
+  .vw-wave-container {
+    position: relative;
+    height: 72px;
+    margin: 0 0 2rem;
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(0,210,150,0.1);
+  }
+
+  .vw-wave-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .vw-wave-label {
+    position: absolute;
+    top: 8px; left: 12px;
+    font-size: 0.6rem;
+    color: rgba(0,210,150,0.4);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  /* Record button */
+  .vw-btn-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.2rem;
+    margin-bottom: 2rem;
+  }
+
+  .vw-btn-ring {
+    position: relative;
+    width: 120px; height: 120px;
+  }
+
+  .vw-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1.5px solid rgba(0,210,150,0.25);
+    animation: vwRingExpand 2.4s ease-out infinite;
+  }
+  .vw-ring:nth-child(2) { animation-delay: 0.8s; }
+  .vw-ring:nth-child(3) { animation-delay: 1.6s; }
+
+  .vw-ring.active {
+    border-color: rgba(0,210,150,0.5);
+    animation-duration: 1.2s;
+  }
+  .vw-ring.active:nth-child(2) { animation-delay: 0.4s; }
+  .vw-ring.active:nth-child(3) { animation-delay: 0.8s; }
+
+  @keyframes vwRingExpand {
+    0% { transform: scale(0.85); opacity: 0.7; }
+    100% { transform: scale(1.4); opacity: 0; }
+  }
+
+  .vw-btn {
+    position: absolute;
+    inset: 10px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    transition: all 0.25s ease;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-  }
-  .vr-brand { display:flex; align-items:center; gap:.6rem; }
-  .vr-brand-dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: #00c8a0;
-    animation: pulse-dot 2s ease-in-out infinite;
-  }
-  .vr-brand-name {
-    font-size: 11px; font-weight: 700; letter-spacing: .14em;
-    color: #00c8a0; text-transform: uppercase;
-  }
-  .vr-badge {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 10px; color: rgba(255,255,255,.28);
-    border: 1px solid rgba(255,255,255,.08);
-    border-radius: 6px; padding: 3px 8px;
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
   }
 
-  /* waveform area */
-  .vr-wave-wrap {
-    margin: 0 1.75rem;
-    background: rgba(0,200,160,.04);
-    border: 1px solid rgba(0,200,160,.1);
+  .vw-btn.idle {
+    background: linear-gradient(145deg, rgba(0,210,150,0.15), rgba(0,210,150,0.05));
+    color: #00d296;
+    border: 1.5px solid rgba(0,210,150,0.5);
+    box-shadow: 0 0 30px rgba(0,210,150,0.15), inset 0 1px 0 rgba(0,210,150,0.2);
+  }
+
+  .vw-btn.idle:hover {
+    background: linear-gradient(145deg, rgba(0,210,150,0.25), rgba(0,210,150,0.1));
+    box-shadow: 0 0 50px rgba(0,210,150,0.3), inset 0 1px 0 rgba(0,210,150,0.3);
+    transform: scale(1.04);
+  }
+
+  .vw-btn.recording {
+    background: linear-gradient(145deg, rgba(255,60,90,0.2), rgba(255,60,90,0.08));
+    color: #ff3c5a;
+    border: 1.5px solid rgba(255,60,90,0.5);
+    box-shadow: 0 0 40px rgba(255,60,90,0.2), inset 0 1px 0 rgba(255,60,90,0.2);
+    animation: vwBtnPulse 1s ease-in-out infinite;
+  }
+
+  @keyframes vwBtnPulse {
+    0%, 100% { box-shadow: 0 0 40px rgba(255,60,90,0.2); }
+    50% { box-shadow: 0 0 60px rgba(255,60,90,0.4); }
+  }
+
+  .vw-btn.processing {
+    background: rgba(0,168,255,0.1);
+    color: #00a8ff;
+    border: 1.5px solid rgba(0,168,255,0.4);
+    cursor: not-allowed;
+    animation: vwSpin 1.5s linear infinite;
+  }
+
+  @keyframes vwSpin {
+    0% { box-shadow: 0 0 0 0 rgba(0,168,255,0.3); }
+    50% { box-shadow: 0 0 40px 5px rgba(0,168,255,0.15); }
+    100% { box-shadow: 0 0 0 0 rgba(0,168,255,0.3); }
+  }
+
+  .vw-btn-icon {
+    font-size: 1.4rem;
+    line-height: 1;
+  }
+
+  /* Status bar */
+  .vw-status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  .vw-status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+  }
+  .vw-status-dot.idle { background: rgba(0,210,150,0.4); }
+  .vw-status-dot.recording { background: #ff3c5a; animation: vwBlink 0.8s step-end infinite; }
+  .vw-status-dot.processing { background: #00a8ff; animation: vwBlink 0.5s ease-in-out infinite; }
+  .vw-status-dot.done { background: #00d296; }
+  .vw-status-dot.error { background: #ff3c5a; }
+
+  @keyframes vwBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.2; }
+  }
+
+  .vw-status-text { color: rgba(0,210,150,0.6); }
+  .vw-status-text.recording { color: rgba(255,60,90,0.8); }
+  .vw-status-text.processing { color: rgba(0,168,255,0.8); }
+  .vw-status-text.done { color: rgba(0,210,150,0.9); }
+  .vw-status-text.error { color: rgba(255,60,90,0.8); }
+
+  /* Results */
+  .vw-result {
+    margin-top: 1.5rem;
     border-radius: 16px;
     overflow: hidden;
-    position: relative;
-    height: 110px;
-  }
-  .vr-wave-canvas { display: block; width:100%; height:100%; }
-  .vr-scan-line {
-    position: absolute;
-    left: 0; right: 0; height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(0,200,160,.4), transparent);
-    animation: scan-line 2.2s linear infinite;
-    pointer-events: none;
-  }
-  .vr-wave-label {
-    position: absolute; bottom: 8px; left: 12px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px; color: rgba(0,200,160,.5);
-    letter-spacing: .08em;
-  }
-  .vr-wave-label-r {
-    position: absolute; bottom: 8px; right: 12px;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9px; color: rgba(255,255,255,.2);
+    border: 1px solid rgba(0,210,150,0.15);
+    animation: vwSlideUp 0.4s ease;
   }
 
-  /* metrics row */
-  .vr-metrics {
-    display: flex; gap: 1px;
-    margin: .9rem 1.75rem 0;
-    background: rgba(0,200,160,.06);
-    border: 1px solid rgba(0,200,160,.08);
-    border-radius: 12px;
+  @keyframes vwSlideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .vw-result-header {
+    padding: 1.2rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .vw-result-header.risk {
+    background: linear-gradient(135deg, rgba(255,60,90,0.12), rgba(255,60,90,0.04));
+    border-bottom: 1px solid rgba(255,60,90,0.2);
+  }
+
+  .vw-result-header.safe {
+    background: linear-gradient(135deg, rgba(0,210,150,0.12), rgba(0,210,150,0.04));
+    border-bottom: 1px solid rgba(0,210,150,0.2);
+  }
+
+  .vw-result-badge {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+  .vw-result-badge.risk { background: rgba(255,60,90,0.15); }
+  .vw-result-badge.safe { background: rgba(0,210,150,0.15); }
+
+  .vw-result-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 2px;
+    opacity: 0.5;
+    color: #ccc;
+  }
+
+  .vw-result-prediction {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: 0.02em;
+  }
+  .vw-result-prediction.risk { color: #ff3c5a; }
+  .vw-result-prediction.safe { color: #00d296; }
+
+  .vw-metrics {
+    padding: 1rem 1.5rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    background: rgba(0,0,0,0.2);
+  }
+
+  .vw-metric {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+  }
+
+  .vw-metric-label {
+    font-size: 0.58rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.3);
+    margin-bottom: 4px;
+  }
+
+  .vw-metric-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #00d296;
+  }
+
+  .vw-metric-bar {
+    margin-top: 6px;
+    height: 3px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
     overflow: hidden;
   }
-  .vr-metric {
-    flex: 1; padding: .6rem .5rem;
-    text-align: center; position: relative;
-  }
-  .vr-metric + .vr-metric::before {
-    content:''; position:absolute; left:0; top:15%; bottom:15%;
-    width:1px; background: rgba(0,200,160,.12);
-  }
-  .vr-metric-val {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 15px; font-weight: 400;
-    color: #fff; display: block;
-  }
-  .vr-metric-lbl {
-    font-size: 9px; color: rgba(255,255,255,.3);
-    text-transform: uppercase; letter-spacing: .1em; margin-top: 2px; display:block;
+
+  .vw-metric-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #00d296, #00a8ff);
+    transition: width 0.8s ease;
   }
 
-  /* center button area */
-  .vr-btn-area {
-    display: flex; flex-direction: column;
-    align-items: center; padding: 1.8rem 0 1.4rem;
-  }
-  .vr-btn-outer {
-    position: relative; width: 100px; height: 100px;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .vr-ring {
-    position: absolute; inset: 0; border-radius: 50%;
-    border: 1.5px solid transparent;
-    border-top-color: rgba(0,200,160,.5);
-    border-right-color: rgba(0,200,160,.15);
-    animation: spin-ring 2.4s linear infinite;
-    pointer-events: none;
-  }
-  .vr-ring2 {
-    position: absolute; inset: 7px; border-radius: 50%;
-    border: 1px solid transparent;
-    border-bottom-color: rgba(0,229,255,.35);
-    border-left-color: rgba(0,229,255,.1);
-    animation: spin-ring2 1.8s linear infinite;
-    pointer-events: none;
-  }
-  .vr-ping {
-    position: absolute; inset: 14px; border-radius: 50%;
-    background: rgba(0,200,160,.15);
-    animation: ping 2s ease-out infinite;
-    pointer-events: none;
-  }
-  .vr-btn {
-    position: relative; z-index: 2;
-    width: 64px; height: 64px;
-    border-radius: 50%;
-    border: none; cursor: pointer;
-    background: linear-gradient(135deg, #00c8a0, #00a882);
-    display: flex; align-items: center; justify-content: center;
-    transition: transform .15s, box-shadow .15s;
-    box-shadow: 0 0 0 0 rgba(0,200,160,0);
-  }
-  .vr-btn:hover { transform: scale(1.06); box-shadow: 0 0 20px rgba(0,200,160,.4); }
-  .vr-btn:active { transform: scale(.96); }
-  .vr-btn.recording {
-    background: linear-gradient(135deg, #ff4d6d, #c9264a);
-    box-shadow: 0 0 24px rgba(255,77,109,.4);
-  }
-  .vr-btn-icon { width: 22px; height: 22px; }
-
-  /* status pill */
-  .vr-status {
-    margin-top: .9rem;
-    display: flex; align-items: center; gap: .45rem;
-    animation: status-in .3s ease;
-  }
-  .vr-status-dot {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: #00c8a0;
-  }
-  .vr-status-dot.rec { background: #ff4d6d; animation: pulse-dot .9s ease-in-out infinite; }
-  .vr-status-dot.err { background: #ff8c42; }
-  .vr-status-dot.proc { background: #7c6fff; animation: pulse-dot 1.1s ease-in-out infinite; }
-  .vr-status-txt {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px; color: rgba(255,255,255,.45);
-    letter-spacing: .1em; text-transform: uppercase;
-  }
-
-  /* bar visualizer (idle) */
-  .vr-bars {
-    display: flex; align-items: flex-end;
-    gap: 2px; height: 100%; padding: 12px 10px;
+  .vw-download {
+    display: flex;
+    align-items: center;
     justify-content: center;
-  }
-  .vr-bar {
-    width: 3px; background: rgba(0,200,160,.25);
-    border-radius: 2px 2px 0 0;
-    transform-origin: bottom;
-    animation: bar-grow .6s ease both;
-  }
-
-  /* results */
-  .vr-results {
-    margin: 0 1.75rem 1.75rem;
-    animation: result-in .4s cubic-bezier(.22,1,.36,1);
-  }
-  .vr-result-header {
-    display: flex; align-items: center; justify-content: space-between;
-    margin-bottom: .75rem;
-  }
-  .vr-result-status {
-    font-size: 18px; font-weight: 800;
-    background: linear-gradient(135deg, #00c8a0, #00e5ff);
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  }
-  .vr-result-status.warning {
-    background: linear-gradient(135deg, #ff4d6d, #ff8c42);
-  }
-  .vr-confidence {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 11px; color: rgba(255,255,255,.3);
-  }
-  .vr-divider {
-    height: 1px; background: rgba(0,200,160,.1); margin: .75rem 0;
-  }
-  .vr-insight {
-    font-size: 12.5px; line-height: 1.65;
-    color: rgba(255,255,255,.55);
-  }
-  .vr-report-btn {
-    margin-top: 1rem; width: 100%;
-    padding: .75rem;
-    background: transparent;
-    border: 1px solid rgba(0,200,160,.3);
-    border-radius: 12px;
-    color: #00c8a0;
-    font-family: 'Syne', sans-serif;
-    font-size: 13px; font-weight: 700;
-    letter-spacing: .06em;
+    gap: 8px;
+    padding: 0.9rem 1.5rem;
+    background: rgba(0,210,150,0.08);
+    border: none;
+    border-top: 1px solid rgba(0,210,150,0.12);
+    color: #00d296;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-decoration: none;
     cursor: pointer;
-    display: flex; align-items: center; justify-content: center; gap: .5rem;
-    transition: background .2s, border-color .2s, color .2s;
-  }
-  .vr-report-btn:hover {
-    background: rgba(0,200,160,.1);
-    border-color: rgba(0,200,160,.6);
-    color: #fff;
+    transition: background 0.2s;
+    width: 100%;
   }
 
-  /* ticker footer */
-  .vr-ticker-wrap {
-    border-top: 1px solid rgba(0,200,160,.07);
-    overflow: hidden; padding: .5rem 0;
-  }
-  .vr-ticker {
-    display: flex; gap: 2rem;
-    width: max-content;
-    animation: ticker 18s linear infinite;
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 9.5px; color: rgba(255,255,255,.15);
-    letter-spacing: .08em; padding: 0 1rem;
+  .vw-download:hover {
+    background: rgba(0,210,150,0.14);
   }
 
-  /* processing skeleton */
-  .vr-proc-bars {
-    display: flex; flex-direction: column; gap: .5rem;
+  /* Footer */
+  .vw-footer {
+    text-align: center;
+    margin-top: 1.5rem;
+    font-size: 0.58rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(0,210,150,0.2);
   }
-  .vr-skel {
-    height: 8px; border-radius: 4px;
-    background: linear-gradient(90deg, rgba(0,200,160,.05) 25%, rgba(0,200,160,.18) 50%, rgba(0,200,160,.05) 75%);
-    background-size: 200% auto;
-    animation: shimmer 1.4s linear infinite;
+
+  /* Scan line effect */
+  .vw-scanline {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(0,210,150,0.3), transparent);
+    animation: vwScanDown 6s linear infinite;
+    z-index: 0;
+    pointer-events: none;
+  }
+  @keyframes vwScanDown {
+    0% { top: -2px; }
+    100% { top: 100vh; }
   }
 `;
 
-/* ─── Idle bar heights ─── */
-const IDLE_BARS = [18,28,14,36,22,42,16,30,12,38,24,44,20,32,15,40,26,18,34,22,42,14,36,28,16];
+function WaveformCanvas({ isRecording, analyserNode }) {
+  const canvasRef = useRef(null);
+  const animRef = useRef(null);
+  const phaseRef = useRef(0);
 
-/* ─── helpers ─── */
-function formatTime(sec) {
-  const m = String(Math.floor(sec / 60)).padStart(2,'0');
-  const s = String(sec % 60).padStart(2,'0');
-  return `${m}:${s}`;
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    const W = canvas.width = canvas.offsetWidth * window.devicePixelRatio;
+    const H = canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+
+    const draw = () => {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = "transparent";
+
+      if (isRecording && analyserNode) {
+        const bufLen = analyserNode.frequencyBinCount;
+        const data = new Uint8Array(bufLen);
+        analyserNode.getByteTimeDomainData(data);
+        ctx.beginPath();
+        ctx.strokeStyle = "rgba(0,210,150,0.9)";
+        ctx.lineWidth = 1.5 * window.devicePixelRatio;
+        ctx.shadowColor = "#00d296";
+        ctx.shadowBlur = 6;
+        const sliceW = W / bufLen;
+        let x = 0;
+        for (let i = 0; i < bufLen; i++) {
+          const v = data[i] / 128.0;
+          const y = (v * H) / 2;
+          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+          x += sliceW;
+        }
+        ctx.lineTo(W, H / 2);
+        ctx.stroke();
+      } else {
+        phaseRef.current += isRecording ? 0.06 : 0.015;
+        const ph = phaseRef.current;
+        ctx.beginPath();
+        const opacity = isRecording ? 0.8 : 0.25;
+        ctx.strokeStyle = `rgba(0,210,150,${opacity})`;
+        ctx.lineWidth = 1.5 * window.devicePixelRatio;
+        for (let x = 0; x <= W; x += 2) {
+          const t = x / W;
+          const amp = isRecording ? H * 0.35 : H * 0.1;
+          const y = H / 2 + amp * Math.sin(t * 12 + ph) * Math.sin(t * 3.5 + ph * 0.3);
+          x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+      animRef.current = requestAnimationFrame(draw);
+    };
+    draw();
+    return () => cancelAnimationFrame(animRef.current);
+  }, [isRecording, analyserNode]);
+
+  return <canvas ref={canvasRef} className="vw-wave-canvas" />;
 }
 
-const TICKER_ITEMS = [
-  'VOCAL BIOMARKER ANALYSIS','RESPIRATORY PATTERN DETECTION','NEURO-ACOUSTIC PROFILING',
-  'PHONEME STRESS MAPPING','HARMONIC FREQUENCY SCAN','AI HEALTH INFERENCE',
-  'SECURE ENCRYPTED UPLOAD','CLINICAL GRADE REPORT'
-];
+export default function VoiceWell() {
+  const [status, setStatus] = useState("idle");
+  const [result, setResult] = useState(null);
+  const mediaRef = useRef(null);
+  const chunks = useRef([]);
+  const analyserRef = useRef(null);
+  const audioCtxRef = useRef(null);
 
-export default function VoiceRecorder() {
-  const [status, setStatus]   = useState('idle');   // idle | recording | processing | ready | error
-  const [results, setResults] = useState(null);
-  const [elapsed, setElapsed] = useState(0);
-  const [amplitude, setAmplitude] = useState(0);
+  const isRisk = result?.prediction?.toUpperCase().includes("RISK");
 
-  const canvasRef      = useRef(null);
-  const mediaRecRef    = useRef(null);
-  const chunksRef      = useRef([]);
-  const timerRef       = useRef(null);
-  const animRef        = useRef(null);
-  const styleInjected  = useRef(false);
-
-  /* inject CSS once */
-  useEffect(() => {
-    if (styleInjected.current) return;
-    styleInjected.current = true;
-    const el = document.createElement('style');
-    el.textContent = CSS;
-    document.head.appendChild(el);
-  }, []);
-
-  /* elapsed timer */
-  useEffect(() => {
-    if (status === 'recording') {
-      setElapsed(0);
-      timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
-    } else {
-      clearInterval(timerRef.current);
-    }
-    return () => clearInterval(timerRef.current);
-  }, [status]);
-
-  /* draw waveform */
-  const drawWave = (analyser, dataArray) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const W = canvas.width, H = canvas.height;
-
-    const render = () => {
-      animRef.current = requestAnimationFrame(render);
-      analyser.getByteTimeDomainData(dataArray);
-
-      // compute amplitude
-      let sum = 0;
-      for (let i = 0; i < dataArray.length; i++) sum += Math.abs(dataArray[i] - 128);
-      setAmplitude(Math.round(sum / dataArray.length));
-
-      ctx.clearRect(0, 0, W, H);
-
-      // glow layer
-      ctx.globalAlpha = 0.18;
-      ctx.strokeStyle = '#00e5ff';
-      ctx.lineWidth = 6;
-      drawPath(ctx, dataArray, W, H);
-      ctx.stroke();
-
-      // main line
-      ctx.globalAlpha = 1;
-      const grad = ctx.createLinearGradient(0, 0, W, 0);
-      grad.addColorStop(0, '#00c8a0');
-      grad.addColorStop(0.5, '#00e5ff');
-      grad.addColorStop(1, '#00c8a0');
-      ctx.strokeStyle = grad;
-      ctx.lineWidth = 2;
-      drawPath(ctx, dataArray, W, H);
-      ctx.stroke();
-    };
-    render();
-  };
-
-  const drawPath = (ctx, dataArray, W, H) => {
-    ctx.beginPath();
-    const slice = W / dataArray.length;
-    let x = 0;
-    for (let i = 0; i < dataArray.length; i++) {
-      const y = (dataArray[i] / 128.0) * (H / 2);
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      x += slice;
-    }
-  };
-
-  /* idle canvas — flat line */
-  useEffect(() => {
-    if (status !== 'idle' && status !== 'ready') return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const W = canvas.width, H = canvas.height;
-    ctx.clearRect(0, 0, W, H);
-    ctx.strokeStyle = 'rgba(0,200,160,.3)';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([4, 8]);
-    ctx.beginPath();
-    ctx.moveTo(0, H / 2);
-    ctx.lineTo(W, H / 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }, [status]);
-
-  const startRecording = async () => {
+  const start = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 512;
-      audioCtx.createMediaStreamSource(stream).connect(analyser);
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      drawWave(analyser, dataArray);
+      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioCtxRef.current.createMediaStreamSource(stream);
+      const analyser = audioCtxRef.current.createAnalyser();
+      analyser.fftSize = 2048;
+      source.connect(analyser);
+      analyserRef.current = analyser;
 
-      mediaRecRef.current = new MediaRecorder(stream);
-      chunksRef.current = [];
-      mediaRecRef.current.ondataavailable = e => chunksRef.current.push(e.data);
-      mediaRecRef.current.onstop = () => {
-        cancelAnimationFrame(animRef.current);
-        const blob = new Blob(chunksRef.current, { type: 'audio/wav' });
-        uploadFile(blob);
+      mediaRef.current = new MediaRecorder(stream);
+      chunks.current = [];
+      mediaRef.current.ondataavailable = e => { if (e.data.size > 0) chunks.current.push(e.data); };
+      mediaRef.current.onstop = async () => {
+        const blob = new Blob(chunks.current, { type: "audio/webm" });
+        const wav = await convertToWav(blob);
+        upload(wav);
       };
-      mediaRecRef.current.start();
-      setStatus('recording');
+      mediaRef.current.start();
+      setStatus("recording");
     } catch {
-      setStatus('error');
+      setStatus("error");
     }
   };
 
-  const stopRecording = () => {
-    mediaRecRef.current?.stop();
-    setStatus('processing');
+  const stop = () => {
+    if (mediaRef.current && status === "recording") {
+      mediaRef.current.stop();
+      mediaRef.current.stream?.getTracks().forEach(t => t.stop());
+      setStatus("processing");
+    }
   };
 
-  const uploadFile = async (blob) => {
-    const formData = new FormData();
-    formData.append('file', blob, 'voice.wav');
+  const upload = async (blob) => {
+    const fd = new FormData();
+    fd.append("audio", blob, "voice.wav");
     try {
-      const res = await fetch('http://localhost:5000/analyze', { method: 'POST', body: formData });
+      const res = await fetch("http://127.0.0.1:5000/analyze", { method: "POST", body: fd });
+      if (!res.ok) throw new Error();
       const data = await res.json();
-      setResults(data);
-      setStatus('ready');
+      setResult(data);
+      setStatus("done");
     } catch {
-      setStatus('error');
+      setStatus("error");
     }
   };
 
-  const handleBtn = () => {
-    if (status === 'recording') stopRecording();
-    else if (status === 'idle' || status === 'ready' || status === 'error') startRecording();
+  const convertToWav = async (blob) => {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const buffer = await blob.arrayBuffer();
+    const audio = await ctx.decodeAudioData(buffer);
+    const samples = audio.getChannelData(0);
+    const wav = new ArrayBuffer(44 + samples.length * 2);
+    const view = new DataView(wav);
+    const ws = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+    ws(0, "RIFF"); view.setUint32(4, 36 + samples.length * 2, true); ws(8, "WAVE");
+    ws(12, "fmt "); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true); view.setUint32(24, audio.sampleRate, true);
+    view.setUint32(28, audio.sampleRate * 2, true); view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true); ws(36, "data"); view.setUint32(40, samples.length * 2, true);
+    for (let i = 0, o = 44; i < samples.length; i++, o += 2) {
+      const s = Math.max(-1, Math.min(1, samples[i]));
+      view.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+    }
+    return new Blob([wav], { type: "audio/wav" });
   };
 
-  /* derived UI state */
-  const isRec  = status === 'recording';
-  const isProc = status === 'processing';
-  const dotCls = isRec ? 'rec' : isProc ? 'proc' : status === 'error' ? 'err' : '';
-  const statusLabel = { idle: 'READY', recording: `REC  ${formatTime(elapsed)}`, processing: 'ANALYSING', ready: 'COMPLETE', error: 'MIC ERROR' }[status];
+  const btnClass = ["idle", "recording", "processing"].includes(status) ? status : "idle";
 
-  const healthy = results?.status === 'Healthy';
+  const statusLabels = {
+    idle: "Ready — tap to begin",
+    recording: "Recording — tap to stop",
+    processing: "Analyzing voice patterns...",
+    done: "Analysis complete",
+    error: "Connection failed",
+  };
+
+  const btnIcons = { idle: "🎙", recording: "⏹", processing: "⏳", done: "🎙", error: "🎙" };
 
   return (
-    <div className="vr-root">
-      <div className="vr-card">
-        <div className="vr-stripe" />
-
-        {/* header */}
-        <div className="vr-header">
-          <div className="vr-brand">
-            <div className="vr-brand-dot" />
-            <span className="vr-brand-name">VocalScan AI</span>
-          </div>
-          <span className="vr-badge">v2.4.1</span>
+    <>
+      <style>{CSS}</style>
+      <div className="vw-root">
+        <div className="vw-bg">
+          <div className="vw-grid" />
+          <div className="vw-orb1" />
+          <div className="vw-orb2" />
         </div>
+        <div className="vw-scanline" />
 
-        {/* waveform */}
-        <div className="vr-wave-wrap">
-          {isRec && <div className="vr-scan-line" />}
-          {(status === 'idle' || status === 'ready' || status === 'recording') && (
-            <canvas ref={canvasRef} width={420} height={110} className="vr-wave-canvas" />
-          )}
-          {isProc && (
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100%', flexDirection:'column', gap:'10px' }}>
-              <div style={{ display:'flex', gap:'5px', alignItems:'flex-end', height:'40px' }}>
-                {[14,28,20,36,18,42,24,30,16,38,22,44,20,32].map((h,i) => (
-                  <div key={i} className="vr-bar" style={{
-                    height: `${h}px`,
-                    animationDelay: `${i*0.07}s`,
-                    animationDuration: `${0.4 + (i%3)*0.15}s`,
-                    animationIterationCount: 'infinite',
-                    animationDirection: 'alternate',
-                    background: `rgba(124,111,255,${0.2 + (i%4)*.15})`
-                  }} />
-                ))}
+        <div className="vw-card">
+          <div className="vw-header">
+            <div className="vw-logo">
+              <div className="vw-logo-icon">
+                <svg viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="18" cy="18" r="17" stroke="url(#lg1)" strokeWidth="1.5"/>
+                  <path d="M6 18 Q9 10 12 18 Q15 26 18 18 Q21 10 24 18 Q27 26 30 18" stroke="url(#lg1)" strokeWidth="2" strokeLinecap="round" fill="none"/>
+                  <defs>
+                    <linearGradient id="lg1" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse">
+                      <stop stopColor="#00d296"/>
+                      <stop offset="1" stopColor="#00a8ff"/>
+                    </linearGradient>
+                  </defs>
+                </svg>
               </div>
-              <span style={{ fontFamily:"'JetBrains Mono',monospace", fontSize:'9px', color:'rgba(124,111,255,.6)', letterSpacing:'.12em' }}>PROCESSING NEURAL MODEL</span>
+              <h1 className="vw-title">VoiceWell</h1>
             </div>
-          )}
-          {(status === 'idle') && (
-            <div className="vr-bars" style={{ position:'absolute', inset:0 }}>
-              {IDLE_BARS.map((h,i) => (
-                <div key={i} className="vr-bar" style={{ height:`${h}px`, animationDelay:`${i*0.03}s` }} />
-              ))}
-            </div>
-          )}
-          <span className="vr-wave-label">CH-01 · VOICE</span>
-          <span className="vr-wave-label-r">{isRec ? `AMP ${amplitude}` : '44.1kHz'}</span>
-        </div>
-
-        {/* metrics */}
-        <div className="vr-metrics">
-          {[
-            { val: isRec ? formatTime(elapsed) : '—', lbl: 'Duration' },
-            { val: isRec ? `${amplitude || '—'}` : '—', lbl: 'Amplitude' },
-            { val: results ? (healthy ? '98%' : '71%') : '—', lbl: 'Confidence' },
-          ].map(({ val, lbl }) => (
-            <div key={lbl} className="vr-metric">
-              <span className="vr-metric-val">{val}</span>
-              <span className="vr-metric-lbl">{lbl}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* button */}
-        <div className="vr-btn-area">
-          <div className="vr-btn-outer">
-            {isRec && <div className="vr-ping" />}
-            <div className="vr-ring" style={isRec ? { animationDuration:'1.1s', borderTopColor:'rgba(255,77,109,.6)' } : {}} />
-            <div className="vr-ring2" style={isRec ? { animationDuration:'.8s', borderBottomColor:'rgba(255,77,109,.4)' } : {}} />
-            <button className={`vr-btn${isRec ? ' recording' : ''}`} onClick={handleBtn} disabled={isProc}>
-              {isRec ? (
-                <svg className="vr-btn-icon" viewBox="0 0 22 22" fill="none">
-                  <rect x="4" y="4" width="14" height="14" rx="3" fill="white"/>
-                </svg>
-              ) : (
-                <svg className="vr-btn-icon" viewBox="0 0 22 22" fill="none">
-                  <rect x="8" y="3" width="6" height="12" rx="3" fill="white"/>
-                  <path d="M4 11a7 7 0 0014 0" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-                  <line x1="11" y1="18" x2="11" y2="21" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-                </svg>
-              )}
-            </button>
+            <p className="vw-tagline">Neural Voice Analysis · Parkinsons Detection</p>
           </div>
 
-          <div className="vr-status">
-            <div className={`vr-status-dot ${dotCls}`} />
-            <span className="vr-status-txt">{statusLabel}</span>
+          <div className="vw-wave-container">
+            <span className="vw-wave-label">Voice Signal</span>
+            <WaveformCanvas isRecording={status === "recording"} analyserNode={analyserRef.current} />
           </div>
-        </div>
 
-        {/* results */}
-        {results && status === 'ready' && (
-          <div className="vr-results">
-            <div className="vr-divider" />
-            <div className="vr-result-header">
-              <span className={`vr-result-status${healthy ? '' : ' warning'}`}>
-                {results.status}
+          <div className="vw-btn-area">
+            <div className="vw-btn-ring">
+              <div className={`vw-ring ${status === "recording" ? "active" : ""}`} />
+              <div className={`vw-ring ${status === "recording" ? "active" : ""}`} />
+              <div className={`vw-ring ${status === "recording" ? "active" : ""}`} />
+              <button
+                className={`vw-btn ${btnClass}`}
+                onClick={status === "recording" ? stop : (status === "idle" || status === "done" || status === "error") ? start : undefined}
+                disabled={status === "processing"}
+              >
+                <span className="vw-btn-icon">{btnIcons[status] || "🎙"}</span>
+                <span>{status === "recording" ? "STOP" : "SCAN"}</span>
+              </button>
+            </div>
+
+            <div className="vw-status-bar">
+              <div className={`vw-status-dot ${status === "error" ? "error" : status}`} />
+              <span className={`vw-status-text ${status === "error" ? "error" : status}`}>
+                {statusLabels[status] || status}
               </span>
-              <span className="vr-confidence">CONF {healthy ? '98.2%' : '71.4%'}</span>
             </div>
-            <p className="vr-insight">{results.ai_insight}</p>
-            <button className="vr-report-btn" onClick={() => window.open(results.report_url)}>
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-                <path d="M3 2h7l3 3v9H3V2z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-                <path d="M10 2v3h3M6 7h4M6 10h4M6 13h2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
-              </svg>
-              View Clinical Report
-            </button>
           </div>
-        )}
 
-        {/* ticker */}
-        <div className="vr-ticker-wrap">
-          <div className="vr-ticker">
-            {[...TICKER_ITEMS, ...TICKER_ITEMS].map((t,i) => (
-              <span key={i}>· {t}</span>
-            ))}
-          </div>
+          {result && (
+            <div className="vw-result">
+              <div className={`vw-result-header ${isRisk ? "risk" : "safe"}`}>
+                <div className={`vw-result-badge ${isRisk ? "risk" : "safe"}`}>
+                  {isRisk ? "⚠" : "✓"}
+                </div>
+                <div>
+                  <div className="vw-result-label">Diagnosis Output</div>
+                  <div className={`vw-result-prediction ${isRisk ? "risk" : "safe"}`}>
+                    {result.prediction}
+                  </div>
+                </div>
+              </div>
+
+              <div className="vw-metrics">
+                {[
+                  { label: "Jitter", value: result.metrics?.jitter, unit: "%" },
+                  { label: "Shimmer", value: result.metrics?.shimmer, unit: "%" },
+                  { label: "HNR", value: result.metrics?.hnr, unit: "dB" },
+                  { label: "Confidence", value: result.metrics?.confidence, unit: "%" },
+                ].filter(m => m.value !== undefined).map((m) => (
+                  <div className="vw-metric" key={m.label}>
+                    <div className="vw-metric-label">{m.label}</div>
+                    <div className="vw-metric-value">{parseFloat(m.value).toFixed(2)}{m.unit}</div>
+                    <div className="vw-metric-bar">
+                      <div className="vw-metric-fill" style={{ width: `${Math.min(parseFloat(m.value), 100)}%` }} />
+                    </div>
+                  </div>
+                ))}
+                {result.metrics?.jitter !== undefined && result.metrics?.shimmer !== undefined && (
+                  <>
+                    <div className="vw-metric">
+                      <div className="vw-metric-label">Jitter</div>
+                      <div className="vw-metric-value">{parseFloat(result.metrics.jitter).toFixed(2)}%</div>
+                      <div className="vw-metric-bar">
+                        <div className="vw-metric-fill" style={{ width: `${Math.min(parseFloat(result.metrics.jitter), 100)}%` }} />
+                      </div>
+                    </div>
+                    <div className="vw-metric">
+                      <div className="vw-metric-label">Shimmer</div>
+                      <div className="vw-metric-value">{parseFloat(result.metrics.shimmer).toFixed(2)}%</div>
+                      <div className="vw-metric-bar">
+                        <div className="vw-metric-fill" style={{ width: `${Math.min(parseFloat(result.metrics.shimmer), 100)}%` }} />
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <a
+                href={`http://127.0.0.1:5000${result.report_url}`}
+                target="_blank"
+                rel="noreferrer"
+                className="vw-download"
+              >
+                ↓ &nbsp; Download Clinical Report &nbsp; · &nbsp; PDF
+              </a>
+            </div>
+          )}
+
+          <div className="vw-divider" />
+          <div className="vw-footer">PNN-Powered · Clinical Grade · Real-time Analysis</div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

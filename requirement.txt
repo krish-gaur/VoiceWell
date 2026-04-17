@@ -4,5 +4,5 @@ librosa
 numpy
 fpdf
 google-genai
+python-dotenv
 soundfile
-audioread
