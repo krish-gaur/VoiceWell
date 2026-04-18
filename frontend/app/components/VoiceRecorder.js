@@ -500,13 +500,25 @@ export default function VoiceWell() {
 
   const start = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-      const source = audioCtxRef.current.createMediaStreamSource(stream);
-      const analyser = audioCtxRef.current.createAnalyser();
-      analyser.fftSize = 2048;
-      source.connect(analyser);
-      analyserRef.current = analyser;
+     const stream = await navigator.mediaDevices.getUserMedia({ 
+    audio: {
+      echoCancellation: true,
+      noiseSuppression: true,
+      autoGainControl: true
+    } 
+  });
+    // This tells you if the computer is actually "hearing" you
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const source = audioCtx.createMediaStreamSource(stream);
+const analyser = audioCtx.createAnalyser();
+source.connect(analyser);
+const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+setInterval(() => {
+  analyser.getByteFrequencyData(dataArray);
+  const volume = dataArray.reduce((a, b) => a + b) / dataArray.length;
+  if(volume > 0) console.log("✅ Mic Signal Active. Volume:", volume);
+}, 1000);
 
       mediaRef.current = new MediaRecorder(stream);
       chunks.current = [];
@@ -531,11 +543,15 @@ export default function VoiceWell() {
     }
   };
 
-  const upload = async (blob) => {
-    const fd = new FormData();
-    fd.append("audio", blob, "voice.wav");
-    try {
-      const res = await fetch("http://127.0.0.1:5000/analyze", { method: "POST", body: fd });
+ const upload = async (blob) => {
+  const fd = new FormData(); fd.append("audio", blob, "voice.wav");
+  try {
+    // mode: 'cors' is required to prevent the browser from blocking the handshake
+    const res = await fetch("http://127.0.0.1:5000/analyze", { 
+      method: "POST", 
+      mode: 'cors',
+      body: fd 
+    });
       if (!res.ok) throw new Error();
       const data = await res.json();
       setResult(data);
